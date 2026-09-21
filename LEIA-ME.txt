@@ -73,3 +73,13 @@ CORREÇÃO v1.0.2-central — MENDONÇA / CACHE LOCAL / LEGADO
   em um objeto window isolado.
 - Corrige o caso em que a v1.0 marcou 2014–2019 como carregados com arrays vazios.
 - Nenhum arquivo anual municipal foi alterado.
+
+
+VERSÃO v1.1.0-central — AUDITORIA AMPLIADA
+- Concentração de pagamentos: Top 1, Top 5, Top 10 e HHI.
+- Quadro Prefeitura x Câmara.
+- Triagem de pagamentos a pessoas físicas fora da folha.
+- Empenhos entre 95% e 100% do limite de referência.
+- Matriz de evidências para confirmação documental.
+- Limitações explícitas para preço unitário/sobrepreço e rastreamento de recursos.
+- Os sinais são descritivos e não qualificam irregularidade.
