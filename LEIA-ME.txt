@@ -64,3 +64,12 @@ CORREÇÃO v1.0.1-central — MENDONÇA 2014–2019
 - 2020–2026: window.SEED_DATA.despesas/receitas.push(...[...]).
 - O carregador central agora aceita ambos os formatos sem converter nem alterar a base municipal.
 - Atualização apenas do software central; nenhum data-AAAA.js foi modificado.
+
+
+CORREÇÃO v1.0.2-central — MENDONÇA / CACHE LOCAL / LEGADO
+- Migração do IndexedDB central para v2, descartando estados locais problemáticos da v1.
+- Um exercício só é tratado como carregado se houver registros reais daquele ano.
+- 2014–2019 de Mendonça recebem parser textual + fallback por interpretação do próprio data-AAAA.js
+  em um objeto window isolado.
+- Corrige o caso em que a v1.0 marcou 2014–2019 como carregados com arrays vazios.
+- Nenhum arquivo anual municipal foi alterado.

@@ -1,8 +1,8 @@
 const MONTHS=["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],$=s=>document.querySelector(s);
-const CITY=window.TCESP_CITY,OWNER="transparencia-sp",APP_VERSION="v1.0.1-central";
+const CITY=window.TCESP_CITY,OWNER="transparencia-sp",APP_VERSION="v1.0.2-central";
 if(!CITY)throw Error("Município não configurado.");
 const DATA_BASE=`https://raw.githubusercontent.com/${OWNER}/${CITY.repo}/main/`;
-const DBN=`tcesp-central-${CITY.id}-v1`,STORE="dados",KEY="base";
+const DBN=`tcesp-central-${CITY.id}-v2`,STORE="dados",KEY="base";
 let tab="painel",db,compareReal=false,renderToken=0,selectedYear=null,yearChangeToken=0;
 function idbOpen(){return new Promise((res,rej)=>{let r=indexedDB.open(DBN,1);r.onupgradeneeded=()=>r.result.createObjectStore(STORE);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
 async function idbGet(){let d=await idbOpen();return new Promise((res,rej)=>{let r=d.transaction(STORE).objectStore(STORE).get(KEY);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
@@ -426,6 +426,29 @@ function legacyAnnualObjectFromText(txt,y){
   if(!Array.isArray(obj.despesas)||!Array.isArray(obj.receitas))throw Error(`objeto histórico de ${y} inválido`);
   return obj
 }
+function legacyPackByExecution(txt,y){
+  // Fallback para os data-AAAA.js antigos de Mendonça.
+  // Executa somente o arquivo de dados do nosso próprio repositório em um objeto "window" isolado.
+  const fakeWindow={
+    TCESP_ANNUAL_DATA:{},
+    SEED_DATA:{despesas:[],receitas:[]}
+  };
+  try{
+    const run=new Function("window",`"use strict";\n${txt}\n`);
+    run(fakeWindow);
+  }catch(e){
+    throw Error(`arquivo legado ${y} não pôde ser interpretado: ${e.message}`);
+  }
+  const annual=fakeWindow.TCESP_ANNUAL_DATA?.[y];
+  if(annual&&Array.isArray(annual.despesas)&&Array.isArray(annual.receitas)){
+    return {ano:+y,despesas:annual.despesas,receitas:annual.receitas};
+  }
+  if(Array.isArray(fakeWindow.SEED_DATA?.despesas)&&Array.isArray(fakeWindow.SEED_DATA?.receitas) &&
+     (fakeWindow.SEED_DATA.despesas.length||fakeWindow.SEED_DATA.receitas.length)){
+    return {ano:+y,despesas:fakeWindow.SEED_DATA.despesas,receitas:fakeWindow.SEED_DATA.receitas};
+  }
+  throw Error(`arquivo legado ${y} foi lido, mas não contém registros`);
+}
 async function fetchBaselineManifest(force=false){
   if(CITY.format==="legacy-js"){
     const years=(CITY.years||[]).map(Number).filter(Number.isFinite).sort((a,b)=>a-b);
@@ -449,8 +472,9 @@ async function fetchBaselineManifest(force=false){
 }
 function yearAlreadyLoaded(y){
   y=+y;
-  return (db?._loadedYears||[]).includes(y) ||
-    (db?.despesas||[]).some(x=>+x.ano===y) ||
+  // Um ano só é considerado carregado se houver registros reais na memória.
+  // v1.0 podia marcar 2014–2019 de Mendonça como "carregados" mesmo vazios.
+  return (db?.despesas||[]).some(x=>+x.ano===y) ||
     (db?.receitas||[]).some(x=>+x.ano===y)
 }
 async function fetchPermanentYear(y,force=false,manifestOverride=null){
@@ -465,16 +489,26 @@ async function fetchPermanentYear(y,force=false,manifestOverride=null){
   let pack;
   if(CITY.format==="legacy-js"){
     const txt=await r.text();
-    const annual=legacyAnnualObjectFromText(txt,+y);
-    pack=annual?{ano:+y,despesas:annual.despesas,receitas:annual.receitas}:{
-      ano:+y,
-      despesas:legacyArrayFromText(txt,"window.SEED_DATA.despesas.push(..."),
-      receitas:legacyArrayFromText(txt,"window.SEED_DATA.receitas.push(...")
-    };
+    try{
+      const annual=legacyAnnualObjectFromText(txt,+y);
+      if(annual){
+        pack={ano:+y,despesas:annual.despesas,receitas:annual.receitas};
+      }else{
+        pack={
+          ano:+y,
+          despesas:legacyArrayFromText(txt,"window.SEED_DATA.despesas.push(..."),
+          receitas:legacyArrayFromText(txt,"window.SEED_DATA.receitas.push(...")
+        };
+      }
+      if(!pack.despesas.length&&!pack.receitas.length)throw Error("leitura vazia");
+    }catch(parseError){
+      console.warn(`Parser textual falhou em ${y}; tentando interpretador legado.`,parseError);
+      pack=legacyPackByExecution(txt,+y);
+    }
   }else{
     pack=await r.json();
   }
-  if(!Array.isArray(pack.despesas)||!Array.isArray(pack.receitas))throw Error(`${file}: conteúdo inválido`);
+  if(!Array.isArray(pack.despesas)||!Array.isArray(pack.receitas))throw Error(`${file}: conteúdo inválido ou vazio`);
   if(Number.isFinite(item.despesas)&&pack.despesas.length!==item.despesas)throw Error(`${file}: contagem de despesas divergente`);
   if(Number.isFinite(item.receitas)&&pack.receitas.length!==item.receitas)throw Error(`${file}: contagem de receitas divergente`);
   return pack
