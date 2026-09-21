@@ -1,0 +1,73 @@
+<!doctype html><html lang="pt-BR"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17324d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Transparência SP">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Transparência SP • Painéis municipais</title>
+<link rel="stylesheet" href="style.css?v=100CENTRAL-20260921">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.svg">
+<script src="municipios.js?v=100CENTRAL-20260921"></script>
+<script>
+(function(){
+  window.TCESP_BUILD_ID="100CENTRAL-20260921";
+  const q=new URLSearchParams(location.search);
+  const requested=q.get("municipio")||localStorage.getItem("tcesp-central-city")||"mendonca";
+  const list=window.TCESP_CITIES||[];
+  window.TCESP_CITY=list.find(x=>x.id===requested)||list[0];
+  if(window.TCESP_CITY) localStorage.setItem("tcesp-central-city",window.TCESP_CITY.id);
+  try{
+    if("serviceWorker" in navigator){
+      navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))).catch(()=>{});
+    }
+    if("caches" in window){caches.keys().then(ks=>Promise.all(ks.filter(k=>/^tcesp-/i.test(k)).map(k=>caches.delete(k)))).catch(()=>{});}
+  }catch(e){}
+})();
+</script>
+</head><body>
+<header><div><div class="brandline"><b id="brandTitle">Transparência SP</b><span class="version-badge">v1.0-central</span></div><small>Painel unificado de receitas e despesas municipais • dados TCESP</small></div><button id="installBtn" hidden>Instalar</button></header>
+<main>
+<section class="controls card">
+<label class="municipio-control">Município<select id="municipio"></select></label><label>Exercício<select id="ano"><option value="2026">2026</option><option value="2025">2025</option></select></label><label>Mês<select id="mes"><option value="0">Ano inteiro</option></select></label>
+<label>Órgão<select id="orgao"><option value="Prefeitura">Prefeitura</option><option value="Todos">Todos</option><option value="Câmara">Câmara</option></select></label>
+<label class="grow">Pesquisar<span class="searchfield"><input id="q" type="search" placeholder="Gasto, credor, CNPJ, empenho, receita…" autocomplete="off"><button id="clearQ" type="button" hidden>Limpar</button></span></label>
+<button id="apiBtn">Atualizar mês TCESP</button><button id="yearBtn">Carregar exercício TCESP</button><button id="addYearBtn">Adicionar exercício</button><label class="file">Importar JSON<input id="file" type="file" accept=".json,.txt,.md" multiple></label>
+</section>
+<section id="apiFreshness" class="freshness card"></section>
+<section id="analysisScope" class="analysis-scope card" hidden></section>
+<section id="cards" class="cards"></section>
+<nav><button data-tab="painel" class="active">Painel</button><button data-tab="despesas">Despesas</button><button data-tab="receitas">Receitas</button><button data-tab="gastos">Gastos</button><button data-tab="diarias">Pagamentos eventuais</button><button data-tab="auditoria">Sinais de auditoria</button><button data-tab="comparar">Comparar anos</button><button data-tab="entenda">Entenda os dados</button></nav>
+<section id="painel" class="panel"></section>
+<section id="tableSec" class="card tablewrap" hidden><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></section>
+<section id="travelSec" hidden></section>
+<section id="auditSec" hidden></section>
+<section id="compareSec" hidden></section>
+<section id="entendaSec" hidden>
+  <div class="explain-hero card"><h2>Entenda os dados</h2><p>Guia rápido para interpretar os lançamentos exibidos neste painel. Os eventos de despesa são etapas diferentes da execução orçamentária e <strong>não devem ser somados entre si como se fossem gastos distintos</strong>.</p></div>
+  <div class="flow card" aria-label="Fluxo da despesa"><span>ORÇAMENTO</span><b>→</b><span>EMPENHO</span><b>→</b><span>LIQUIDAÇÃO</span><b>→</b><span>PAGAMENTO</span></div>
+  <div class="explaingrid">
+    <article class="explain card"><h3>Empenhado</h3><p>Valor do compromisso assumido pela Administração e registrado por empenho. O empenho cria obrigação de pagamento, pendente ou não do implemento de condição. <strong>Empenhado não significa pago.</strong></p></article>
+    <article class="explain card"><h3>Reforço</h3><p>Acréscimo lançado sobre um empenho existente. No painel, aumenta o valor considerado no cálculo do empenho líquido.</p></article>
+    <article class="explain card"><h3>Anulação</h3><p>Cancelamento total ou parcial de valor anteriormente empenhado. No painel, reduz o valor considerado no cálculo do empenho líquido.</p></article>
+    <article class="explain card"><h3>Empenho líquido</h3><p><strong>Indicador calculado pelo painel:</strong> Empenhado + Reforço − Anulação. Não é apresentado como um estágio legal autônomo da despesa.</p></article>
+    <article class="explain card"><h3>Liquidado</h3><p>A liquidação verifica o direito adquirido pelo credor, com base nos títulos e documentos comprobatórios. Em termos simples: é a etapa de conferir o que deve ser pago e a quem.</p></article>
+    <article class="explain card"><h3>Pago</h3><p>Valor do evento de pagamento informado na base. Pela Lei nº 4.320/1964, a ordem de pagamento somente pode ser exarada após a regular liquidação.</p></article>
+    <article class="explain card"><h3>Receita arrecadada</h3><p>Soma dos lançamentos de arrecadação fornecidos pela API para o período selecionado. Valores negativos existentes na fonte são preservados e reduzem o total líquido mostrado.</p></article>
+    <article class="explain card"><h3>Receita − empenho líquido</h3><p>Comparação analítica produzida pelo painel entre a receita arrecadada e o empenho líquido. <strong>Sozinha, essa diferença não deve ser interpretada como o resultado orçamentário definitivo ou como déficit/superávit do Município.</strong></p></article>
+  </div>
+  <div class="method card"><h3>Fonte e metodologia</h3><p>Os registros de despesas e receitas vêm da API do Portal da Transparência Municipal do Tribunal de Contas do Estado de São Paulo (TCESP). A documentação da API identifica, nas despesas, os eventos “empenhado”, “liquidado”, “pago”, “reforço” e “anulação”. O painel preserva esses eventos separadamente.</p><p>Os conceitos legais de empenho, liquidação e ordem de pagamento têm como referência os arts. 58 a 65 da Lei Federal nº 4.320/1964. Os indicadores “Empenho líquido” e “Receita − empenho líquido” são cálculos deste painel, apresentados para facilitar a leitura e não para substituir demonstrativos contábeis oficiais, auditoria ou análise das contas públicas.</p><p><a href="https://transparencia.tce.sp.gov.br/apis" target="_blank" rel="noopener">Documentação da API do TCESP</a> · <a href="https://www.planalto.gov.br/ccivil_03/leis/l4320.htm" target="_blank" rel="noopener">Lei nº 4.320/1964</a></p></div>
+  <div class="method card"><h3>Sinais de auditoria</h3><p>A aba correspondente executa testes de consistência e de padrões de execução sobre os lançamentos carregados. Os resultados são pontos de conferência, não conclusões de irregularidade. A interface evita divulgar regras detalhadas de seleção e remete a confirmação aos documentos do processo administrativo.</p></div>
+  <div class="method card"><h3>Classificações indicativas</h3><p>A API consultada não fornece função orçamentária, secretaria responsável nem objeto detalhado da despesa. Por isso, o gráfico “Gastos pagos por setor” e a aba “Pagamentos eventuais” utilizam classificações indicativas pelo nome do credor e pelo padrão dos lançamentos. Nessa aba, a API do TCESP permite identificar pagamentos nominais a pessoas físicas, mas não distingue com segurança sua natureza. Os resultados podem abranger diárias, ressarcimentos ou reembolsos, alimentação, combustível/deslocamento, adiantamentos e outras verbas eventuais. A natureza de cada lançamento deve ser confirmada no Portal da Transparência Municipal e nos documentos do empenho/liquidação.</p><p>A categoria “Folha de pagamento” exige expressões de remuneração, como “folha de pagamento”, “salário” ou “subsídios”; coincidências nominais isoladas não bastam para classificar uma despesa.</p></div>
+</section>
+<section class="tools card"><b>Dados</b><a id="cityRepoLink" class="source-link" target="_blank" rel="noopener">Repositório de dados do município</a><span class="datahint">Exercícios adicionais ficam salvos neste aparelho.</span><button id="csvBtn">Exportar CSV da aba</button><button id="backupBtn">Backup JSON</button><label class="file">Restaurar backup<input id="restore" type="file" accept=".json"></label><button id="resetBtn">Restaurar base original</button></section>
+<p id="status"></p>
+</main>
+<dialog id="paymentDialog" class="payment-dialog" aria-labelledby="paymentDetailTitle">
+  <div class="dialog-head"><div><small>Ficha histórica do credor</small><h2 id="paymentDetailTitle">Ficha do credor</h2></div><button id="closePaymentDialog" type="button" aria-label="Fechar detalhamento">Fechar</button></div>
+  <div id="paymentDetailBody"></div>
+</dialog>
+<script src="seed-data.js?v=100CENTRAL-20260921"></script><script src="app.js?v=100CENTRAL-20260921"></script></body></html>

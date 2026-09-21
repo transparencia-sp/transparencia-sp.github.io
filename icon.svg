@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="TCESP Adolfo">
+  <rect width="512" height="512" rx="96" fill="#17324d"/>
+  <path d="M94 130h324v52H282v200h-56V182H94z" fill="#fff"/>
+  <circle cx="382" cy="348" r="48" fill="#fff" opacity=".92"/>
+  <path d="M361 348l14 14 29-34" fill="none" stroke="#17324d" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

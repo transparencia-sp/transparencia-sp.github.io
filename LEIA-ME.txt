@@ -1,0 +1,58 @@
+TRANSPARÊNCIA SP — PAINEL UNIFICADO v1.0-central
+
+OBJETIVO
+Um único código de interface em:
+https://transparencia-sp.github.io/
+
+Os 11 repositórios municipais passam a funcionar como bases de dados.
+Assim, alterações em app.js, style.css ou index.html são feitas UMA VEZ no
+repositório central, e todos os municípios recebem a nova interface.
+
+ARQUITETURA
+- Repositório central esperado: transparencia-sp/transparencia-sp.github.io
+- Interface compartilhada: index.html + app.js + style.css + municipios.js
+- Dados: buscados diretamente dos repositórios municipais via raw.githubusercontent.com
+- Carregamento: somente o exercício mais recente na abertura; outros anos sob demanda
+- IndexedDB: separado por município (tcesp-central-<slug>-v1)
+- Troca de município: recarrega a página com ?municipio=<slug>
+- Atualização direta pela API TCESP permanece disponível no navegador
+- Os repositórios municipais NÃO precisam receber futuras atualizações de interface.
+
+MUNICÍPIOS INICIAIS
+- Mendonça: TCE-SP (mendonca)
+- José Bonifácio: TCE-SP-Jose-Bonifacio (jose-bonifacio)
+- Adolfo: TCE-SP-Adolfo (adolfo)
+- Ubarana: TCE-SP-Ubarana (ubarana)
+- Nova Aliança: TCE-SP-Nova-Alianca (nova-alianca)
+- Bady Bassitt: TCE-SP-Bady-Bassitt (bady-bassitt)
+- Sales: TCE-SP-Sales (sales)
+- Irapuã: TCE-SP-Irapua (irapua)
+- Urupês: TCE-SP-Urupes (urupes)
+- Potirendaba: TCE-SP-Potirendaba (potirendaba)
+- Novo Horizonte: TCE-SP-Novo-Horizonte (novo-horizonte)
+
+MENDONÇA
+O repositório TCE-SP usa historicamente data-AAAA.js. O painel central possui
+um carregador compatível com esse formato legado; não é necessário converter
+esses arquivos imediatamente.
+
+MIGRAÇÃO RECOMENDADA
+1. Criar o repositório público: transparencia-sp.github.io
+2. Enviar os arquivos deste pacote para a raiz.
+3. Ativar GitHub Pages pela branch main / root, se necessário.
+4. Testar os 11 municípios pelo seletor.
+5. Somente depois, substituir uma única vez o index.html dos antigos sites
+   pelos redirecionadores fornecidos no pacote separado.
+
+LINKS COMPARTILHÁVEIS
+Exemplo:
+https://transparencia-sp.github.io/?municipio=novo-horizonte
+https://transparencia-sp.github.io/?municipio=mendonca
+
+LIMITAÇÃO IMPORTANTE
+A unificação centraliza o SOFTWARE. Os arquivos históricos continuam distribuídos
+nos repositórios municipais. Isso é proposital: evita concentrar centenas de MB
+em um único GitHub Pages e permite manter cada base auditável por município.
+
+BUILD
+100CENTRAL-20260921
