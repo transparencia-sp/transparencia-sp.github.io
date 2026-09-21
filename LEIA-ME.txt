@@ -56,3 +56,11 @@ em um único GitHub Pages e permite manter cada base auditável por município.
 
 BUILD
 100CENTRAL-20260921
+
+
+CORREÇÃO v1.0.1-central — MENDONÇA 2014–2019
+- Identificada coexistência de dois formatos históricos no repositório TCE-SP.
+- 2014–2019: window.TCESP_ANNUAL_DATA[AAAA] = {despesas:[...], receitas:[...]}.
+- 2020–2026: window.SEED_DATA.despesas/receitas.push(...[...]).
+- O carregador central agora aceita ambos os formatos sem converter nem alterar a base municipal.
+- Atualização apenas do software central; nenhum data-AAAA.js foi modificado.

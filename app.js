@@ -1,5 +1,5 @@
 const MONTHS=["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],$=s=>document.querySelector(s);
-const CITY=window.TCESP_CITY,OWNER="transparencia-sp",APP_VERSION="v1.0-central";
+const CITY=window.TCESP_CITY,OWNER="transparencia-sp",APP_VERSION="v1.0.1-central";
 if(!CITY)throw Error("Município não configurado.");
 const DATA_BASE=`https://raw.githubusercontent.com/${OWNER}/${CITY.repo}/main/`;
 const DBN=`tcesp-central-${CITY.id}-v1`,STORE="dados",KEY="base";
@@ -389,11 +389,7 @@ function markApiUpdate(y,m,d,r){db.apiUpdates??={};db.apiUpdates[`${y}-${String(
 async function updateMonthFromApi(y,m,silent=false){let base="https://transparencia.tce.sp.gov.br/api/json",[d,r]=await Promise.all([fetchJson(`${base}/despesas/${MUNICIPIO_API}/${y}/${m}`),fetchJson(`${base}/receitas/${MUNICIPIO_API}/${y}/${m}`)]);if(!Array.isArray(d)||!d.length||!Array.isArray(r)||!r.length)throw Error("mês ainda sem dados completos na API");await importData(d,m,y);await importData(r,m,y);markApiUpdate(y,m,d,r);db.lastApiCheck=new Date().toISOString();await save();renderFreshness();if(!silent)alert("Mês atualizado integralmente.");return true}
 async function autoCheckCurrentYear(){let y=new Date().getFullYear();if(y!==2026)return;let ms=monthCoverage(y),last=ms.length?Math.max(...ms):0,next=last+1,deadline=AUDESP_2026[next];if(!deadline)return;let today=new Date(),due=new Date(deadline+"T23:59:59");if(today<=due)return;let lastTry=db.autoCheck?.[`${y}-${next}`];if(lastTry&&Date.now()-new Date(lastTry).getTime()<20*60*60*1000)return;db.autoCheck??={};db.autoCheck[`${y}-${next}`]=new Date().toISOString();db.lastApiCheck=new Date().toISOString();await save();try{await updateMonthFromApi(y,next,true)}catch(e){console.info("TCESP: próximo mês ainda indisponível",e.message);renderFreshness()}}
 async function fetchJson(url){let r=await fetch(url,{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);return r.json()}
-function legacyArrayFromText(txt,marker){
-  const i=txt.indexOf(marker);
-  if(i<0)return [];
-  const start=txt.indexOf("[",i+marker.length);
-  if(start<0)throw Error("array histórica não localizada");
+function legacyJsonBlock(txt,start,openCh,closeCh){
   let depth=0,inStr=false,escp=false;
   for(let p=start;p<txt.length;p++){
     const ch=txt[p];
@@ -404,13 +400,31 @@ function legacyArrayFromText(txt,marker){
       continue
     }
     if(ch==='"'){inStr=true;continue}
-    if(ch==="[")depth++;
-    else if(ch==="]"){
+    if(ch===openCh)depth++;
+    else if(ch===closeCh){
       depth--;
-      if(depth===0)return JSON.parse(txt.slice(start,p+1))
+      if(depth===0)return txt.slice(start,p+1)
     }
   }
-  throw Error("array histórica incompleta")
+  throw Error("bloco histórico incompleto")
+}
+function legacyArrayFromText(txt,marker){
+  const i=txt.indexOf(marker);
+  if(i<0)return [];
+  const start=txt.indexOf("[",i+marker.length);
+  if(start<0)throw Error("array histórica não localizada");
+  return JSON.parse(legacyJsonBlock(txt,start,"[","]"))
+}
+function legacyAnnualObjectFromText(txt,y){
+  const marker=`window.TCESP_ANNUAL_DATA[${y}]`;
+  const i=txt.indexOf(marker);
+  if(i<0)return null;
+  const eq=txt.indexOf("=",i+marker.length);
+  const start=txt.indexOf("{",eq);
+  if(eq<0||start<0)throw Error(`objeto histórico de ${y} não localizado`);
+  const obj=JSON.parse(legacyJsonBlock(txt,start,"{","}"));
+  if(!Array.isArray(obj.despesas)||!Array.isArray(obj.receitas))throw Error(`objeto histórico de ${y} inválido`);
+  return obj
 }
 async function fetchBaselineManifest(force=false){
   if(CITY.format==="legacy-js"){
@@ -451,7 +465,8 @@ async function fetchPermanentYear(y,force=false,manifestOverride=null){
   let pack;
   if(CITY.format==="legacy-js"){
     const txt=await r.text();
-    pack={
+    const annual=legacyAnnualObjectFromText(txt,+y);
+    pack=annual?{ano:+y,despesas:annual.despesas,receitas:annual.receitas}:{
       ano:+y,
       despesas:legacyArrayFromText(txt,"window.SEED_DATA.despesas.push(..."),
       receitas:legacyArrayFromText(txt,"window.SEED_DATA.receitas.push(...")
